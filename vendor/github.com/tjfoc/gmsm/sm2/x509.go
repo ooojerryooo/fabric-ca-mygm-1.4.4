@@ -986,7 +986,6 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 	case MD2WithRSA, MD5WithRSA:
 		return InsecureAlgorithmError(algo)
 	case SM2WithSM3: // SM3WithRSA reserve
-		fmt.Println("SM3")
 		hashType = SM3
 	default:
 		return ErrUnsupportedAlgorithm
