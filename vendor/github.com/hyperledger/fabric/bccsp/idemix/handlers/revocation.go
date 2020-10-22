@@ -6,12 +6,12 @@ SPDX-License-Identifier: Apache-2.0
 package handlers
 
 import (
-	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/tjfoc/gmsm/sm2"
 	"reflect"
 
 	"github.com/hyperledger/fabric/bccsp"
@@ -22,12 +22,12 @@ import (
 // and implements the bccsp.Key interface
 type revocationSecretKey struct {
 	// sk is the idemix reference to the revocation key
-	privKey *ecdsa.PrivateKey
+	privKey *sm2.PrivateKey
 	// exportable if true, sk can be exported via the Bytes function
 	exportable bool
 }
 
-func NewRevocationSecretKey(sk *ecdsa.PrivateKey, exportable bool) *revocationSecretKey {
+func NewRevocationSecretKey(sk *sm2.PrivateKey, exportable bool) *revocationSecretKey {
 	return &revocationSecretKey{privKey: sk, exportable: exportable}
 }
 
@@ -71,10 +71,10 @@ func (k *revocationSecretKey) PublicKey() (bccsp.Key, error) {
 }
 
 type revocationPublicKey struct {
-	pubKey *ecdsa.PublicKey
+	pubKey *sm2.PublicKey
 }
 
-func NewRevocationPublicKey(pubKey *ecdsa.PublicKey) *revocationPublicKey {
+func NewRevocationPublicKey(pubKey *sm2.PublicKey) *revocationPublicKey {
 	return &revocationPublicKey{pubKey: pubKey}
 }
 
@@ -152,18 +152,19 @@ func (i *RevocationPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyI
 
 	blockPub, _ := pem.Decode(raw.([]byte))
 	if blockPub == nil {
-		return nil, errors.New("Failed to decode revocation ECDSA public key")
+		return nil, errors.New("Failed to decode revocation sm2 public key")
 	}
-	revocationPk, err := x509.ParsePKIXPublicKey(blockPub.Bytes)
+	// 重点
+	revocationPk, err := sm2.ParsePKIXPublicKey(blockPub.Bytes)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to parse revocation ECDSA public key bytes")
+		return nil, errors.Wrap(err, "Failed to parse revocation sm2 public key bytes")
 	}
-	ecdsaPublicKey, isECDSA := revocationPk.(*ecdsa.PublicKey)
-	if !isECDSA {
-		return nil, errors.Errorf("key is of type %v, not of type ECDSA", reflect.TypeOf(revocationPk))
+	sm2PublicKey, isSM2 := revocationPk.(*sm2.PublicKey)
+	if !isSM2 {
+		return nil, errors.Errorf("key is of type %v, not of type sm2", reflect.TypeOf(revocationPk))
 	}
 
-	return &revocationPublicKey{ecdsaPublicKey}, nil
+	return &revocationPublicKey{sm2PublicKey}, nil
 }
 
 type CriSigner struct {

@@ -7,16 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package idemix
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/asn1"
-	"math/big"
+	ecdsa "github.com/tjfoc/gmsm/sm2"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl"
 	"github.com/hyperledger/fabric-amcl/amcl/FP256BN"
+	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/pkg/errors"
 )
 
@@ -32,7 +30,7 @@ var ProofBytes = map[RevocationAlgorithm]int{
 
 // GenerateLongTermRevocationKey generates a long term signing key that will be used for revocation
 func GenerateLongTermRevocationKey() (*ecdsa.PrivateKey, error) {
-	return ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	return ecdsa.GenerateKey()
 }
 
 // CreateCRI creates the Credential Revocation Information for a certain time period (epoch).
@@ -95,12 +93,12 @@ func VerifyEpochPK(pk *ecdsa.PublicKey, epochPK *ECP2, epochPkSig []byte, epoch 
 	}
 	digest := sha256.Sum256(bytesToSign)
 
-	var sig struct{ R, S *big.Int }
-	if _, err := asn1.Unmarshal(epochPkSig, &sig); err != nil {
-		return errors.Wrap(err, "failed unmashalling signature")
+	r, s, err := utils.UnmarshalECDSASignature(epochPkSig)
+	if err != nil {
+		return errors.Wrap(err, "failed to unmarshal ECDSA signature")
 	}
 
-	if !ecdsa.Verify(pk, digest[:], sig.R, sig.S) {
+	if !ecdsa.Verify(pk, digest[:], r, s) {
 		return errors.Errorf("EpochPKSig invalid")
 	}
 
