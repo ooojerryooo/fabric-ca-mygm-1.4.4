@@ -18,13 +18,21 @@ package bccsp
 
 import "fmt"
 
+// GMSM3Opts contains options relating to GMSM3.
+type GMSM3Opts struct {
+}
+
+func (opts *GMSM3Opts) Algorithm() string {
+	return GMSM3
+}
+
 // SHA256Opts contains options relating to SHA-256.
 type SHA256Opts struct {
 }
 
 // Algorithm returns the hash algorithm identifier (to be used).
 func (opts *SHA256Opts) Algorithm() string {
-	return SHA256
+	return GMSM3
 }
 
 // SHA384Opts contains options relating to SHA-384.
@@ -58,13 +66,15 @@ func (opts *SHA3_384Opts) Algorithm() string {
 func GetHashOpt(hashFunction string) (HashOpts, error) {
 	switch hashFunction {
 	case SHA256:
-		return &SHA256Opts{}, nil
+		return &GMSM3Opts{}, nil
 	case SHA384:
 		return &SHA384Opts{}, nil
 	case SHA3_256:
 		return &SHA3_256Opts{}, nil
 	case SHA3_384:
 		return &SHA3_384Opts{}, nil
+	case GMSM3:
+		return &GMSM3Opts{}, nil
 	}
 	return nil, fmt.Errorf("hash function not recognized [%s]", hashFunction)
 }

@@ -28,14 +28,15 @@ func ConfigureBCCSP(optsPtr **factory.FactoryOpts, mspDir, homeDir string) error
 		opts = &factory.FactoryOpts{}
 	}
 	if opts.ProviderName == "" {
-		opts.ProviderName = "SW"
+		opts.ProviderName = "GM"
 	}
-	if strings.ToUpper(opts.ProviderName) == "SW" {
+	SetProviderName(opts.ProviderName)
+	if strings.ToUpper(opts.ProviderName) == "GM" {
 		if opts.SwOpts == nil {
 			opts.SwOpts = &factory.SwOpts{}
 		}
 		if opts.SwOpts.HashFamily == "" {
-			opts.SwOpts.HashFamily = "SHA2"
+			opts.SwOpts.HashFamily = "GMSM3"
 		}
 		if opts.SwOpts.SecLevel == 0 {
 			opts.SwOpts.SecLevel = 256

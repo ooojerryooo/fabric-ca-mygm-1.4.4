@@ -139,6 +139,7 @@ func (c *Client) Init() error {
 		// Successfully initialized the client
 		c.initialized = true
 	}
+	SetProviderName(c.Config.CSP.ProviderName)
 	return nil
 }
 
@@ -213,7 +214,14 @@ func (c *Client) GenCSR(req *api.CSRInfo, id string) ([]byte, bccsp.Key, error) 
 		return nil, nil, err
 	}
 
-	csrPEM, err := csr.Generate(cspSigner, cr)
+	var csrPEM []byte
+	if IsGMConfig() {
+		csrPEM, err = generate(cspSigner, cr, key)
+
+	} else {
+		csrPEM, err = csr.Generate(cspSigner, cr)
+	}
+
 	if err != nil {
 		log.Debugf("failed generating CSR: %s", err)
 		return nil, nil, err

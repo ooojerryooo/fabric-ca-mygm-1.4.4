@@ -27,15 +27,15 @@ func ConfigureBCCSP(optsPtr **factory.FactoryOpts, mspDir, homeDir string) error
 	if opts == nil {
 		opts = &factory.FactoryOpts{}
 	}
-	if opts.ProviderName == "" {
-		opts.ProviderName = "SW"
-	}
-	if strings.ToUpper(opts.ProviderName) == "SW" {
+	log.Debugf("方法ConfigureBCCSP中FactoryOpts的ProviderName： %s", opts.ProviderName)
+	opts.ProviderName = "GM"
+	SetProviderName(opts.ProviderName)
+	if strings.ToUpper(opts.ProviderName) == "GM" {
 		if opts.SwOpts == nil {
 			opts.SwOpts = &factory.SwOpts{}
 		}
 		if opts.SwOpts.HashFamily == "" {
-			opts.SwOpts.HashFamily = "SHA2"
+			opts.SwOpts.HashFamily = "GMSM3"
 		}
 		if opts.SwOpts.SecLevel == 0 {
 			opts.SwOpts.SecLevel = 256
