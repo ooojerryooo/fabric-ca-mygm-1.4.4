@@ -151,7 +151,10 @@ build/image/%/$(DUMMY): Makefile build/image/%/payload
 build/image/fabric-ca/payload: \
 	build/docker/bin/fabric-ca-client \
 	build/docker/bin/fabric-ca-server \
-	build/fabric-ca.tar.bz2
+	build/fabric-ca.tar.bz2 \
+	images/fabric-ca/payload/sources.list \
+	images/fabric-ca/payload/entrypoint.sh \
+	images/fabric-ca/payload/confcenterdownload
 build/image/fabric-ca-fvt/payload: \
 	build/docker/bin/fabric-ca-client \
 	build/docker/bin/fabric-ca-server \

@@ -11,10 +11,17 @@ COPY payload/fabric-ca-client /usr/local/bin
 RUN chmod +x /usr/local/bin/fabric-ca-client
 COPY payload/fabric-ca-server /usr/local/bin
 RUN chmod +x /usr/local/bin/fabric-ca-server
+RUN rm -f /etc/apt/sources.list
+COPY payload/sources.list /etc/apt/
 RUN apt-get update && apt-get install -y netcat && rm -rf /var/cache/apt
 
 # Copy the same certificates that are currently hardcoded into the peers
 ADD payload/fabric-ca.tar.bz2 $FABRIC_CA_HOME
 
+COPY payload/confcenterdownload /usr/local/bin/
+COPY payload/entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 EXPOSE 7054
-CMD fabric-ca-server start -b admin:adminpw
+
+ENTRYPOINT ["entrypoint.sh"]
