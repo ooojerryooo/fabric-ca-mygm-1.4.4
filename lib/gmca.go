@@ -45,20 +45,19 @@ func signCert(req signer.SignRequest, ca *CA) (cert []byte, err error) {
 
 	certfile := ca.Config.CA.Certfile
 	//certfile := req.Profile
-	log.Infof("^^^^^^^^^^^^^^^^^^^^^^^certifle = %s", certfile)
 	rootkey, _, x509cert, err := util.GetSignerFromCertFile(certfile, ca.csp)
 	if err != nil {
 
 		return nil, err
 	}
-	log.Infof("^^^^^^^^^^^^^^^^^^^^^^^x509cert = %v", x509cert)
+	log.Infof("【lib.gmca.signCert】根证书私钥的类型：%T\n", rootkey)
 	rootca := ParseX509Certificate2Sm2(x509cert)
 
 	cert, err = gm.CreateCertificateToMem(template, rootca, rootkey)
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("^^^^^^^^^^^^^^^^^^^^^^^template = %v\n cert = %v\n Type = %T", template, cert, template.PublicKey)
+	log.Infof("【lib.gmca.signCert】证书请求 = %v\n cert = %v\n Type = %T", template, cert, template.PublicKey)
 	clientCert, err := sm2.ReadCertificateFromMem(cert)
 	log.Info("==================== Exit ParseCertificate")
 	if err == nil {
@@ -130,7 +129,7 @@ func parseCertificateRequest(csrBytes []byte) (template *sm2.Certificate, err er
 		EmailAddresses:     csrv.EmailAddresses,
 	}
 
-	log.Infof("^^^^^^^^^^^^^^^^^^^^^^^^^^algorithn = %v, %v\n", template.PublicKeyAlgorithm, template.SignatureAlgorithm)
+	log.Infof("【lib.gmca】中证书请求转换为证书，其中公钥算法：%v, 证书签名算法：%v\n", template.PublicKeyAlgorithm, template.SignatureAlgorithm)
 	log.Infof("xxxx publicKey :%T", template.PublicKey)
 
 	template.NotBefore = time.Now()

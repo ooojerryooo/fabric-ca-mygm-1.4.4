@@ -32,7 +32,6 @@ import (
 	_ "github.com/cloudflare/cfssl/cli" // for ocspSignerFromConfig
 	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/csr"
-	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/log"
 	_ "github.com/cloudflare/cfssl/ocsp" // for ocspSignerFromConfig
 	"github.com/cloudflare/cfssl/signer"
@@ -161,13 +160,7 @@ func GetSignerFromCert(cert *x509.Certificate, csp bccsp.BCCSP) (bccsp.Key, cryp
 	if csp == nil {
 		return nil, nil, errors.New("CSP was not initialized")
 	}
-	log.Infof("xxxx begin csp.KeyImport,cert.PublicKey is %T   csp:%T", cert.PublicKey, csp)
-	switch cert.PublicKey.(type) {
-	case *sm2.PublicKey:
-		log.Infof("xxxxx cert is sm2 puk")
-	default:
-		log.Infof("xxxxx cert is default puk")
-	}
+	log.Infof("2-【util.csp.GetSignerFromCert】从证书获取签名者，其中PublicKey类型%T，csp类型:%T", cert.PublicKey, csp)
 
 	sm2cert := gm.ParseX509Certificate2Sm2(cert)
 	// get the public key in the right format
@@ -175,84 +168,33 @@ func GetSignerFromCert(cert *x509.Certificate, csp bccsp.BCCSP) (bccsp.Key, cryp
 	if err != nil {
 		return nil, nil, errors.WithMessage(err, "Failed to import certificate's public key")
 	}
-	kname := hex.EncodeToString(certPubK.SKI())
-	log.Infof("xxxx begin csp.GetKey kname:%s", kname)
+	log.Infof("3-【util.csp.GetSignerFromCert】公钥的SKI:%s", hex.EncodeToString(certPubK.SKI()))
 	// Get the key given the SKI value
 	ski := certPubK.SKI()
-	//todo error发生处，GetKey无法取得privateKey,bccsp的keystore是空的
 	privateKey, err := csp.GetKey(ski)
+	log.Infof("4-【util.csp.GetSignerFromCert】csp.GetKey(ski)，获得私钥，类型%T", privateKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not find matching private key for SKI: %s", err.Error())
 	}
-	log.Info("xxxx begin cspsigner.New()")
 	// Construct and initialize the signer
 	signer, err := cspsigner.New(csp, privateKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to load ski from bccsp: %s", err.Error())
 	}
-	log.Info("xxxx end GetSignerFromCert successfuul")
-	return privateKey, signer, nil
-}
-
-// GetSignerFromSM2Cert load private key represented by ski and return bccsp signer that conforms to crypto.Signer
-func GetSignerFromSM2Cert(cert *sm2.Certificate, csp bccsp.BCCSP) (bccsp.Key, crypto.Signer, error) {
-	if csp == nil {
-		return nil, nil, fmt.Errorf("CSP was not initialized")
-	}
-
-	log.Infof("xxxx begin csp.KeyImport,cert.PublicKey is %T   csp:%T", cert.PublicKey, csp)
-	switch cert.PublicKey.(type) {
-	case sm2.PublicKey:
-		log.Infof("xxxxx cert is sm2 puk")
-	default:
-		log.Infof("xxxxx cert is default puk")
-	}
-
-	// get the public key in the right format
-	certPubK, err := csp.KeyImport(cert, &bccsp.GMSM2PublicKeyImportOpts{Temporary: true})
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to import certificate's public key: %s", err.Error())
-	}
-
-	kname := hex.EncodeToString(certPubK.SKI())
-	log.Infof("xxxx begin csp.GetKey kname:%s", kname)
-
-	// Get the key given the SKI value
-	privateKey, err := csp.GetKey(certPubK.SKI())
-	if err != nil {
-		return nil, nil, errors.Errorf("The private key associated with the certificate with SKI '%s' was not found", hex.EncodeToString(certPubK.SKI()))
-	}
-
-	log.Info("xxxx begin cspsigner.New()")
-	// Construct and initialize the signer
-	signer, err := cspsigner.New(csp, privateKey)
-	if err != nil {
-		return nil, nil, errors.WithMessage(err, "Failed to load ski from bccsp")
-	}
-	log.Info("xxxx end GetSignerFromCert successfuul")
 	return privateKey, signer, nil
 }
 
 // GetSignerFromCertFile load skiFile and load private key represented by ski and return bccsp signer that conforms to crypto.Signer
 func GetSignerFromCertFile(certFile string, csp bccsp.BCCSP) (bccsp.Key, crypto.Signer, *x509.Certificate, error) {
 	// Load cert file
-	certBytes, err := ioutil.ReadFile(certFile)
+	log.Info("1-【util.csp.GetSignerFromCertFile】-读取本地证书文件，路径：" + certFile)
+	sm2Cert, err := sm2.ReadCertificateFromPem(certFile)
 	if err != nil {
-		return nil, nil, nil, errors.Wrapf(err, "Could not read certFile '%s'", certFile)
+		return nil, nil, nil, err
 	}
-	cert, err := helpers.ParseCertificatePEM(certBytes)
-	//var newCert = &x509.Certificate{}
-	if err != nil || cert == nil {
-		log.Infof("+++++++++++++ error = %s,Maybe it is a gm cert!", err.Error())
-		sm2Cert, err := sm2.ReadCertificateFromPem(certFile)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-
-		cert = gm.ParseSm2Certificate2X509(sm2Cert)
-	}
+	cert := gm.ParseSm2Certificate2X509(sm2Cert)
 	key, cspSigner, err := GetSignerFromCert(cert, csp)
-	log.Infof("+++++++++++++KEY = %T error = %v", key, err)
+	log.Infof("5-【util.csp.GetSignerFromCertFile】-key的类型：%T\n", key)
 	return key, cspSigner, cert, err
 }
 
@@ -277,6 +219,7 @@ func BCCSPKeyRequestGenerate(req *csr.CertificateRequest, myCSP bccsp.BCCSP) (bc
 
 // ImportBCCSPKeyFromPEM attempts to create a private BCCSP key from a pem file keyFile
 func ImportBCCSPKeyFromPEM(keyFile string, myCSP bccsp.BCCSP, temporary bool) (bccsp.Key, error) {
+	log.Info("6-【util.csp.ImportBCCSPKeyFromPEM】-读取本地私钥文件，路径：" + keyFile)
 	keyBuff, err := ioutil.ReadFile(keyFile)
 	if err != nil {
 		return nil, err
@@ -288,25 +231,22 @@ func ImportBCCSPKeyFromPEM(keyFile string, myCSP bccsp.BCCSP, temporary bool) (b
 	switch key.(type) {
 	case *sm2.PrivateKey:
 		opts := &factory.FactoryOpts{
-			//ProviderName: "SW",
 			ProviderName: "GM",
 			SwOpts: &factory.SwOpts{
-				//HashFamily: "SHA2",
 				HashFamily: "GMSM3",
 				SecLevel:   256,
-
 				FileKeystore: &factory.FileKeystoreOpts{
-					KeyStorePath: keyFile,
+					KeyStorePath: "/etc/hyperledger/fabric-ca-server/msp/keystore",
 				},
 			},
 		}
+		log.Info("7-【util.csp.ImportBCCSPKeyFromPEM】-KeyStorePath：" + opts.SwOpts.FileKeystore.KeyStorePath)
 		csp, err := factory.GetBCCSPFromOpts(opts)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to convert SM2 private key from %s: %s", keyFile, err.Error())
 		}
-		log.Info("xxxx sm2.PrivateKey!!!!!!!!!!!")
 		block, _ := pem.Decode(keyBuff)
-		priv, err := csp.KeyImport(block.Bytes, &bccsp.GMSM2PrivateKeyImportOpts{Temporary: true})
+		priv, err := csp.KeyImport(block.Bytes, &bccsp.GMSM2PrivateKeyImportOpts{Temporary: temporary})
 		if err != nil {
 			return nil, fmt.Errorf("Failed to convert SM2 private key from %s: %s", keyFile, err.Error())
 		}
