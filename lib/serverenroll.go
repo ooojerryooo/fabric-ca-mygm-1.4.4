@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package lib
 
 import (
-	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
 	"time"
@@ -181,24 +180,18 @@ func processSignRequest(id string, req *signer.SignRequest, ca *CA, ctx *serverR
 		return cferr.Wrap(cferr.CSRError,
 			cferr.BadRequest, errors.New("not a certificate or csr"))
 	}
-	var csrReq *x509.CertificateRequest
-	var err error
-	if IsGMConfig() {
-		sm2csrReq, err := sm2.ParseCertificateRequest(block.Bytes)
-		if err == nil {
-			csrReq = ParseSm2CertificateRequest2X509(sm2csrReq)
-		}
-	} else {
-		csrReq, err = x509.ParseCertificateRequest(block.Bytes)
-	}
+
+	sm2csrReq, err := sm2.ParseCertificateRequest(block.Bytes)
+
 	if err != nil {
 		return err
 	}
-	log.Debugf("Processing sign request: id=%s, CommonName=%s, Subject=%+v", id, csrReq.Subject.CommonName, req.Subject)
-	if (req.Subject != nil && req.Subject.CN != id) || csrReq.Subject.CommonName != id {
+
+	log.Debugf("Processing sign request: id=%s, CommonName=%s, Subject=%+v", id, sm2csrReq.Subject.CommonName, req.Subject)
+	if (req.Subject != nil && req.Subject.CN != id) || sm2csrReq.Subject.CommonName != id {
 		return errors.New("The CSR subject common name must equal the enrollment ID")
 	}
-	isForCACert, err := isRequestForCASigningCert(csrReq, ca, req.Profile)
+	isForCACert, err := isRequestForCASigningCert(sm2csrReq, ca, req.Profile)
 	if err != nil {
 		return err
 	}
@@ -211,7 +204,7 @@ func processSignRequest(id string, req *signer.SignRequest, ca *CA, ctx *serverR
 		}
 	}
 	// Check the CSR input length
-	err = csrInputLengthCheck(csrReq)
+	err = csrInputLengthCheck(sm2csrReq)
 	if err != nil {
 		return err
 	}
@@ -228,7 +221,7 @@ func processSignRequest(id string, req *signer.SignRequest, ca *CA, ctx *serverR
 // Check to see if this is a request for a CA signing certificate.
 // This can occur if the profile or the CSR has the IsCA bit set.
 // See the X.509 BasicConstraints extension (RFC 5280, 4.2.1.9).
-func isRequestForCASigningCert(csrReq *x509.CertificateRequest, ca *CA, profile string) (bool, error) {
+func isRequestForCASigningCert(csrReq *sm2.CertificateRequest, ca *CA, profile string) (bool, error) {
 	// Check the profile to see if the IsCA bit is set
 	sp := getSigningProfile(ca, profile)
 	if sp == nil {
@@ -268,7 +261,7 @@ func getSigningProfile(ca *CA, profile string) *config.SigningProfile {
 }
 
 // Checks to make sure that character limits are not exceeded for CSR fields
-func csrInputLengthCheck(req *x509.CertificateRequest) error {
+func csrInputLengthCheck(req *sm2.CertificateRequest) error {
 	log.Debug("Checking CSR fields to make sure that they do not exceed maximum character limits")
 
 	for _, n := range req.Subject.Names {

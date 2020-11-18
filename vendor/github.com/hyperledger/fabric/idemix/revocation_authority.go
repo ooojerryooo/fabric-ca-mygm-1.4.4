@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	ecdsa "github.com/tjfoc/gmsm/sm2"
+	"github.com/tjfoc/gmsm/sm3"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-amcl/amcl"
@@ -91,14 +92,15 @@ func VerifyEpochPK(pk *ecdsa.PublicKey, epochPK *ECP2, epochPkSig []byte, epoch 
 	if err != nil {
 		return err
 	}
-	digest := sha256.Sum256(bytesToSign)
+	digest := sm3.Sm3Sum(bytesToSign)
+	//digest := sha256.Sum256(bytesToSign)
 
 	r, s, err := utils.UnmarshalECDSASignature(epochPkSig)
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal ECDSA signature")
 	}
 
-	if !ecdsa.Verify(pk, digest[:], r, s) {
+	if !ecdsa.Sm2Verify(pk, digest[:], nil, r, s) {
 		return errors.Errorf("EpochPKSig invalid")
 	}
 

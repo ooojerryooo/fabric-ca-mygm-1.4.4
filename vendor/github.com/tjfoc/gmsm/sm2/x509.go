@@ -1032,11 +1032,11 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 		}
 		switch pub.Curve {
 		case P256Sm2():
-			if !Verify(&PublicKey{
+			if !Sm2Verify(&PublicKey{
 				Curve: pub.Curve,
 				X:     pub.X,
 				Y:     pub.Y,
-			}, digest, ecdsaSig.R, ecdsaSig.S) {
+			}, digest, nil,ecdsaSig.R, ecdsaSig.S) {
 				return errors.New("x509: SM2 verification failure")
 			}
 		default:
@@ -1057,11 +1057,11 @@ func checkSignature(algo SignatureAlgorithm, signed, signature []byte, publicKey
 		}
 		switch pub.Curve {
 		case P256Sm2():
-			if !Verify(&PublicKey{
+			if !Sm2Verify(&PublicKey{
 				Curve: pub.Curve,
 				X:     pub.X,
 				Y:     pub.Y,
-			}, digest, ecdsaSig.R, ecdsaSig.S) {
+			}, digest, nil,ecdsaSig.R, ecdsaSig.S) {
 				return errors.New("x509: SM2 verification failure")
 			}
 		}

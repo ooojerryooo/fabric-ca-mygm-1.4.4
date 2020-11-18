@@ -8,9 +8,9 @@ package lib
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
-	x509 "github.com/tjfoc/gmsm/sm2"
-	tls "github.com/tjfoc/gmtls"
 	"io"
 	"io/ioutil"
 	"net"
@@ -637,7 +637,7 @@ func (s *Server) listenAndServe() (err error) {
 			}
 		}
 
-		cer, err := util.LoadX509KeyPairSM2(c.TLS.CertFile, c.TLS.KeyFile, s.csp)
+		cer, err := util.LoadX509KeyPair(c.TLS.CertFile, c.TLS.KeyFile, s.csp)
 		if err != nil {
 			return err
 		}

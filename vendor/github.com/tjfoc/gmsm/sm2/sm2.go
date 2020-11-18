@@ -33,6 +33,9 @@ import (
 	"github.com/tjfoc/gmsm/sm3"
 )
 
+var (
+	default_uid = []byte{0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38}
+)
 const (
 	aesIV = "IV for <SM2> CTR"
 )
@@ -72,7 +75,7 @@ func SignDataToSignDigit(sign []byte) (*big.Int, *big.Int, error) {
 
 // sign format = 30 + len(z) + 02 + len(r) + r + 02 + len(s) + s, z being what follows its size, ie 02+len(r)+r+02+len(s)+s
 func (priv *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) ([]byte, error) {
-	r, s, err := Sign(priv, msg)
+	r, s, err := Sm2Sign(priv, msg, default_uid)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +93,7 @@ func (pub *PublicKey) Verify(msg []byte, sign []byte) bool {
 	if err != nil {
 		return false
 	}
-	return Verify(pub, msg, sm2Sign.R, sm2Sign.S)
+	return Sm2Verify(pub, msg, default_uid, sm2Sign.R, sm2Sign.S)
 }
 
 func (pub *PublicKey) Encrypt(data []byte) ([]byte, error) {
@@ -212,10 +215,9 @@ func Sign(priv *PrivateKey, hash []byte) (r, s *big.Int, err error) {
 			r.Add(r, e)
 			r.Mod(r, N)
 			if r.Sign() != 0 {
-				break
-			}
-			if t := new(big.Int).Add(r, k); t.Cmp(N) == 0 {
-				break
+				if t := new(big.Int).Add(r, k); t.Cmp(N) != 0 {
+					break
+				}
 			}
 		}
 		rD := new(big.Int).Mul(priv.D, r)
@@ -261,6 +263,9 @@ func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 }
 
 func Sm2Sign(priv *PrivateKey, msg, uid []byte) (r, s *big.Int, err error) {
+	if len(uid) == 0 {
+		uid = default_uid
+	}
 	za, err := ZA(&priv.PublicKey, uid)
 	if err != nil {
 		return nil, nil, err
@@ -286,11 +291,11 @@ func Sm2Sign(priv *PrivateKey, msg, uid []byte) (r, s *big.Int, err error) {
 			r.Add(r, e)
 			r.Mod(r, N)
 			if r.Sign() != 0 {
-				break
+				if t := new(big.Int).Add(r, k); t.Cmp(N) != 0 {
+					break
+				}
 			}
-			if t := new(big.Int).Add(r, k); t.Cmp(N) == 0 {
-				break
-			}
+
 		}
 		rD := new(big.Int).Mul(priv.D, r)
 		s = new(big.Int).Sub(k, rD)
@@ -314,6 +319,9 @@ func Sm2Verify(pub *PublicKey, msg, uid []byte, r, s *big.Int) bool {
 	}
 	if r.Cmp(N) >= 0 || s.Cmp(N) >= 0 {
 		return false
+	}
+	if len(uid) == 0 {
+		uid = default_uid
 	}
 	za, err := ZA(pub, uid)
 	if err != nil {
@@ -355,7 +363,9 @@ func ZA(pub *PublicKey, uid []byte) ([]byte, error) {
 	Entla := uint16(8 * uidLen)
 	za.Write([]byte{byte((Entla >> 8) & 0xFF)})
 	za.Write([]byte{byte(Entla & 0xFF)})
-	za.Write(uid)
+	if uidLen > 0 {
+		za.Write(uid)
+	}
 	za.Write(sm2P256ToBig(&sm2P256.a).Bytes())
 	za.Write(sm2P256.B.Bytes())
 	za.Write(sm2P256.Gx.Bytes())
@@ -365,6 +375,9 @@ func ZA(pub *PublicKey, uid []byte) ([]byte, error) {
 	yBuf := pub.Y.Bytes()
 	if n := len(xBuf); n < 32 {
 		xBuf = append(zeroByteSlice()[:32-n], xBuf...)
+	}
+	if n := len(yBuf); n < 32 {
+		yBuf = append(zeroByteSlice()[:(32-n)], yBuf...)
 	}
 	za.Write(xBuf)
 	za.Write(yBuf)
