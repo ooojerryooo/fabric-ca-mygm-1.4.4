@@ -42,6 +42,8 @@ func signCert(req signer.SignRequest, ca *CA) (cert []byte, err error) {
 		log.Infof("xxxx gmca.go ParseCertificateRequest error:[%s]", err)
 		return nil, err
 	}
+	log.Infof("NotAfter expiry '%s' ,NotBefore expiry '%s'", req.NotAfter, req.NotBefore)
+	template.NotAfter = req.NotAfter
 
 	certfile := ca.Config.CA.Certfile
 	//certfile := req.Profile
@@ -133,8 +135,7 @@ func parseCertificateRequest(csrBytes []byte) (template *sm2.Certificate, err er
 	log.Infof("xxxx publicKey :%T", template.PublicKey)
 
 	template.NotBefore = time.Now()
-	template.NotAfter = time.Now().Add(time.Hour * 1000)
-	//log.Infof("-----------csrv = %+v", csrv)
+	template.NotAfter = time.Now().Add(time.Hour * 43800)
 	for _, val := range csrv.Extensions {
 		// Check the CSR for the X.509 BasicConstraints (RFC 5280, 4.2.1.9)
 		// extension and append to template if necessary
